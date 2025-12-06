@@ -404,7 +404,8 @@ class SelfMCPServer:
                     name="ask_claude",
                     description=(
                         "向 AI 模型提问并获取回答。"
-                        "支持多种模型（Claude、Llama 等），如果主模型不可用会自动回退到备选模型（默认：llama3-8b-instruct）。"
+                        "支持 Claude Sonnet 4.5、Llama3-8B-Instruct 和 OpenAI GPT OSS 20B 模型。"
+                        "如果主模型不可用会自动回退到备选模型（默认：llama3-8b-instruct）。"
                         "需要设置 ANTHROPIC_API_KEY 和 ANTHROPIC_BASE_URL 环境变量。"
                     ),
                     inputSchema={
@@ -416,27 +417,16 @@ class SelfMCPServer:
                             },
                             "model": {
                                 "type": "string",
-                                "description": "模型名称（默认：claude-sonnet-4-5-20250929）。如果 Claude 模型不可用，会自动回退到 llama3-8b-instruct。支持多种模型，根据你的 API 服务选择可用模型。",
+                                "description": "模型名称（默认：claude-sonnet-4-5-20250929）。如果 Claude 模型不可用，会自动回退到 llama3-8b-instruct。",
                                 "enum": [
                                     "claude-sonnet-4-5-20250929",
-                                    "claude-opus-4-1-20250805",
-                                    "claude-haiku-4-5-20251001",
-                                    "claude-opus-4-5-20251101",
-                                    "claude-opus-4-20250514",
-                                    "claude-sonnet-4-20250514",
-                                    "claude-3-5-sonnet-20241022",
-                                    "claude-3-5-haiku-20241022",
-                                    "claude-3-opus-20240229",
-                                    "claude-3-sonnet-20240229",
-                                    "claude-3-haiku-20240307",
                                     "llama3-8b-instruct",
-                                    "gpt-4o-mini",
-                                    "gpt-3.5-turbo",
+                                    "openai-gpt-oss-20b",
                                 ],
                             },
                             "fallback_model": {
                                 "type": "string",
-                                "description": "当主模型失败时的回退模型（默认：llama3-8b-instruct）。如果主模型因权限等问题失败，会自动使用此模型。",
+                                "description": "当主模型失败时的回退模型（默认：llama3-8b-instruct）。如果主模型因权限等问题失败，会自动使用此模型。可选值：claude-sonnet-4-5-20250929、llama3-8b-instruct、openai-gpt-oss-20b。",
                             },
                             "max_tokens": {
                                 "type": "number",

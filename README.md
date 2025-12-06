@@ -115,8 +115,10 @@ python server.py
 
 ### ask_claude
 
-向 Claude 等 AI 模型提问，支持：
-- 多种 Claude 模型（Sonnet、Opus、Haiku 等）
+向 AI 模型提问，支持：
+- Claude Sonnet 4.5 模型
+- Llama3-8B-Instruct 模型
+- OpenAI GPT OSS 20B 模型
 - 自动回退机制（主模型失败时使用备选模型）
 - 自定义系统提示词、温度、最大 token 数等参数
 
