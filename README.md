@@ -1,14 +1,17 @@
 # Self MCP Server
 
-一个最小可用的 MCP Server，用于给前端 / 后端 / 移动端项目构建“代码索引”，并通过 MCP 暴露基础能力：
+一个功能丰富的 MCP Server，提供项目文件搜索、目录结构查看和 AI 模型访问能力：
 
-- `list_files` — 列出项目中的源文件
-- `read_file_content` — 读取指定源文件内容
-- `rebuild_index` — 重新扫描项目并写入本地索引（当前只保存文件列表）
+## 核心功能，用于给前端 / 后端 / 移动端项目构建“代码索引”，并通过 MCP 暴露基础能力：
 
-后续可以在此基础上扩展：依赖图 / symbol 索引 / 多语言支持等。
+- `search_by_url` — 根据 URL 字符串查找匹配的文件（支持文件名、路径、内容匹配）
+- `list_directory` — 列出项目目录结构（树形结构）
+- `ask_claude` — 向 Claude 等 AI 模型提问（支持多种模型和回退机制）
+- `ask_deepseek` — 向 DeepSeek AI 模型提问（支持 deepseek-chat 和 deepseek-reasoner）
 
-## 安装依赖
+## 环境配置
+
+### 安装依赖
 
 ```bash
 # 进入项目目录（请替换为你的实际路径）
@@ -24,16 +27,43 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+### 配置 API Keys（可选）
+
+如果需要使用 AI 模型功能，请设置相应的环境变量：
+
+```bash
+# Claude API（用于 ask_claude）
+export ANTHROPIC_API_KEY='your_anthropic_api_key'
+export ANTHROPIC_BASE_URL='https://your-api-endpoint.com'  # 可选，支持自定义端点
+
+# DeepSeek API（用于 ask_deepseek）
+export DEEPSEEK_API_KEY='your_deepseek_api_key'
+export DEEPSEEK_BASE_URL='https://api.deepseek.com/v1'  # 可选，支持自定义端点（默认：https://api.deepseek.com/v1）
+```
+
+> 注意：如果不设置 API Keys，对应的 AI 功能将不可用，但文件搜索和目录列表功能仍然可用。
+
 ## 启动 MCP Server（用于 Claude Desktop 等客户端）
 
-在 Claude 配置文件中增加：
+### 配置 Claude Desktop
+
+在 Claude Desktop 配置文件中增加 MCP 服务器配置：
+
+**配置文件位置：**
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+**配置内容：**
 
 ```json
 {
   "mcpServers": {
     "self-mcp": {
       "command": "<项目路径>/venv/bin/python3",
-      "args": ["<项目路径>/server.py"]
+      "args": ["<项目路径>/server.py"],
+      "env": {
+        "DEEPSEEK_API_KEY": "your_deepseek_api_key",
+        "DEEPSEEK_BASE_URL": "https://api.deepseek.com/v1"
+      }
     }
   }
 }
@@ -41,7 +71,17 @@ pip install -r requirements.txt
 
 > 将 `<项目路径>` 替换成你本机的实际路径即可。
 
-然后重启 Claude Desktop。
+### 让新功能生效
+
+**重要：** 添加或修改 `ask_deepseek` 功能后，需要：
+
+1. **完全退出并重启 Claude Desktop**
+   - macOS: `Cmd + Q` 完全退出，然后重新打开
+   - 或者右键 Dock 图标 → 退出，然后重新启动
+
+2. **在 Claude Desktop 中测试**
+   - 打开新对话
+   - 尝试使用 `ask_deepseek` 工具
 
 ## 手动测试（不依赖 Claude）
 
@@ -56,16 +96,33 @@ python server.py
 
 这会以 MCP stdio 模式启动 server，方便未来用 MCP SDK 写一个小 client 来调试。
 
-## 下一步可以做什么
+## 功能说明
 
-- 在 `build_simple_index` 基础上：
-  - 针对前端项目（如 React/Vue）解析路由 / 入口文件
-  - 针对后端项目（如 Spring Boot）解析 Controller / 接口
-  - 针对移动端（如 Flutter/React Native）解析页面 / 路由
-- 在 index JSON 里增加：
-  - `dependency_graph`（nodes + edges）
-  - 每个文件的语言类型 / 行数 / 导出 symbol
-- 增加更多 MCP tools，例如：
-  - `get_dependency_graph`
-  - `query_dependencies`
-  - `find_references`
+### search_by_url
+
+根据 URL 字符串在项目中查找匹配的文件，支持多种匹配策略：
+- 文件名精确匹配
+- 路径段匹配
+- 文件名包含匹配
+- 文件内容匹配（路由配置等）
+
+### list_directory
+
+列出项目的目录结构，返回树形结构，支持：
+- 指定相对路径
+- 控制最大深度
+- 自定义忽略目录
+
+### ask_claude
+
+向 Claude 等 AI 模型提问，支持：
+- 多种 Claude 模型（Sonnet、Opus、Haiku 等）
+- 自动回退机制（主模型失败时使用备选模型）
+- 自定义系统提示词、温度、最大 token 数等参数
+
+### ask_deepseek
+
+向 DeepSeek AI 模型提问，支持：
+- `deepseek-chat` - 标准对话模型
+- `deepseek-reasoner` - 思考模式模型（支持 enable_thinking 参数）
+- 自定义系统提示词、温度、最大 token 数等参数

@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Tuple
 from urllib.parse import urlparse, unquote
 
 from anthropic import AsyncAnthropic
+from openai import AsyncOpenAI
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
@@ -312,6 +313,27 @@ class SelfMCPServer:
             )
         else:
             self.claude_client = None
+        
+        # 初始化 DeepSeek 客户端（从环境变量读取 API Key 和自定义端点）
+        deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
+        deepseek_base_url = os.getenv("DEEPSEEK_BASE_URL")
+        if deepseek_api_key:
+            # 如果没有设置 base_url，使用默认值
+            if not deepseek_base_url:
+                deepseek_base_url = "https://api.deepseek.com/v1"
+            # 确保 base_url 包含 /v1 路径
+            elif not deepseek_base_url.endswith("/v1"):
+                if deepseek_base_url.endswith("/"):
+                    deepseek_base_url = deepseek_base_url + "v1"
+                else:
+                    deepseek_base_url = deepseek_base_url + "/v1"
+            self.deepseek_client = AsyncOpenAI(
+                api_key=deepseek_api_key,
+                base_url=deepseek_base_url
+            )
+        else:
+            self.deepseek_client = None
+        
         self._register_tools()
 
     def _register_tools(self) -> None:
@@ -432,6 +454,48 @@ class SelfMCPServer:
                         "required": ["question"],
                     },
                 ),
+                Tool(
+                    name="ask_deepseek",
+                    description=(
+                        "向 DeepSeek AI 模型提问并获取回答。"
+                        "支持 DeepSeek 的各种模型，包括 deepseek-chat 和 deepseek-reasoner（思考模式）。"
+                        "需要设置 DEEPSEEK_API_KEY 环境变量，可选设置 DEEPSEEK_BASE_URL 环境变量（默认：https://api.deepseek.com/v1）。"
+                    ),
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "question": {
+                                "type": "string",
+                                "description": "要向 DeepSeek 提问的问题",
+                            },
+                            "model": {
+                                "type": "string",
+                                "description": "DeepSeek 模型名称（默认：deepseek-chat）。支持 deepseek-chat、deepseek-reasoner 等模型。",
+                                "enum": [
+                                    "deepseek-chat",
+                                    "deepseek-reasoner",
+                                ],
+                            },
+                            "max_tokens": {
+                                "type": "number",
+                                "description": "最大生成 token 数（默认：2048）",
+                            },
+                            "temperature": {
+                                "type": "number",
+                                "description": "温度参数，控制随机性（0-2，默认：1.0）",
+                            },
+                            "system_prompt": {
+                                "type": "string",
+                                "description": "可选的系统提示词，用于设置 AI 的行为",
+                            },
+                            "enable_thinking": {
+                                "type": "boolean",
+                                "description": "是否启用思考模式（仅对 deepseek-reasoner 有效，默认：false）",
+                            },
+                        },
+                        "required": ["question"],
+                    },
+                ),
             ]
 
         @self.server.call_tool()
@@ -442,6 +506,8 @@ class SelfMCPServer:
                 return await self._handle_list_directory(arguments)
             if name == "ask_claude":
                 return await self._handle_ask_claude(arguments)
+            if name == "ask_deepseek":
+                return await self._handle_ask_deepseek(arguments)
 
             raise ValueError(f"Unknown tool: {name}")
 
@@ -650,6 +716,84 @@ class SelfMCPServer:
                     indent=2,
                 )
                 return [TextContent(type="text", text=error_msg)]
+
+    async def _handle_ask_deepseek(self, args: Dict[str, Any]):
+        """处理 DeepSeek AI 提问请求。"""
+        if not self.deepseek_client:
+            error_msg = json.dumps(
+                {
+                    "error": "API 未配置",
+                    "message": "请设置 DEEPSEEK_API_KEY 环境变量（可选设置 DEEPSEEK_BASE_URL）",
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+            return [TextContent(type="text", text=error_msg)]
+
+        question = args["question"]
+        model = args.get("model", "deepseek-chat")
+        max_tokens = int(args.get("max_tokens", 2048))
+        temperature = float(args.get("temperature", 1.0))
+        system_prompt = args.get("system_prompt")
+        enable_thinking = args.get("enable_thinking", False)
+
+        # 构建消息
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": question})
+
+        try:
+            # 准备请求参数
+            request_params = {
+                "model": model,
+                "messages": messages,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+            }
+            
+            # 如果启用思考模式，添加到 extra_body
+            if enable_thinking and model == "deepseek-reasoner":
+                request_params["extra_body"] = {"enable_thinking": True}
+
+            response = await self.deepseek_client.chat.completions.create(**request_params)
+
+            # 提取回复内容
+            answer = ""
+            if response.choices and len(response.choices) > 0:
+                answer = response.choices[0].message.content or ""
+
+            result = {
+                "question": question,
+                "answer": answer,
+                "model": model,
+                "usage": {
+                    "prompt_tokens": response.usage.prompt_tokens if response.usage else 0,
+                    "completion_tokens": response.usage.completion_tokens if response.usage else 0,
+                    "total_tokens": response.usage.total_tokens if response.usage else 0,
+                },
+            }
+
+            if enable_thinking:
+                result["enable_thinking"] = True
+
+            text = json.dumps(result, ensure_ascii=False, indent=2)
+            return [TextContent(type="text", text=text)]
+
+        except Exception as e:
+            error_str = str(e)
+            error_msg = json.dumps(
+                {
+                    "error": "调用 DeepSeek API 失败",
+                    "message": f"模型 '{model}' 调用失败",
+                    "model": model,
+                    "question": question,
+                    "raw_error": error_str[:500] if len(error_str) > 500 else error_str,
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+            return [TextContent(type="text", text=error_msg)]
 
 
 async def main() -> None:
