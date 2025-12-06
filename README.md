@@ -13,7 +13,14 @@
 ```bash
 # 进入项目目录（请替换为你的实际路径）
 cd <项目路径>
+
+# 创建虚拟环境（如果还没有创建）
+python3 -m venv venv
+
+# 激活虚拟环境
 source venv/bin/activate
+
+# 安装依赖
 pip install -r requirements.txt
 ```
 
