@@ -341,66 +341,6 @@ class SelfMCPServer:
         async def list_tools() -> List[Tool]:
             return [
                 Tool(
-                    name="search_by_url",
-                    description=(
-                        "根据 URL 字符串在项目中查找匹配的文件。"
-                        "支持多种匹配策略：文件名匹配、路径匹配、内容匹配等。"
-                        "返回匹配的文件列表及相关信息，供 AI 分析使用。"
-                    ),
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "url": {
-                                "type": "string",
-                                "description": "要搜索的 URL 字符串（可以是完整 URL 或路径）",
-                            },
-                            "project_path": {
-                                "type": "string",
-                                "description": "项目根目录绝对路径",
-                            },
-                            "include_content": {
-                                "type": "boolean",
-                                "description": "是否包含匹配文件的内容片段（默认：true）",
-                            },
-                            "max_results": {
-                                "type": "number",
-                                "description": "最大返回结果数量（默认：10）",
-                            },
-                        },
-                        "required": ["url", "project_path"],
-                    },
-                ),
-                Tool(
-                    name="list_directory",
-                    description=(
-                        "列出项目目录结构。"
-                        "返回指定路径下的文件和子目录树形结构。"
-                    ),
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "project_path": {
-                                "type": "string",
-                                "description": "项目根目录绝对路径",
-                            },
-                            "relative_path": {
-                                "type": "string",
-                                "description": "要列出的目录相对路径（相对于 project_path，默认为根目录）",
-                            },
-                            "max_depth": {
-                                "type": "number",
-                                "description": "最大目录深度（默认：3）",
-                            },
-                            "ignore_dirs": {
-                                "type": "array",
-                                "items": {"type": "string"},
-                                "description": "可选的额外忽略目录列表",
-                            },
-                        },
-                        "required": ["project_path"],
-                    },
-                ),
-                Tool(
                     name="ask_claude",
                     description=(
                         "向 AI 模型提问并获取回答。"
@@ -484,6 +424,66 @@ class SelfMCPServer:
                             },
                         },
                         "required": ["question"],
+                    },
+                ),
+                Tool(
+                    name="search_by_url",
+                    description=(
+                        "根据 URL 字符串在项目中查找匹配的文件。"
+                        "支持多种匹配策略：文件名匹配、路径匹配、内容匹配等。"
+                        "返回匹配的文件列表及相关信息，供 AI 分析使用。"
+                    ),
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "url": {
+                                "type": "string",
+                                "description": "要搜索的 URL 字符串（可以是完整 URL 或路径）",
+                            },
+                            "project_path": {
+                                "type": "string",
+                                "description": "项目根目录绝对路径",
+                            },
+                            "include_content": {
+                                "type": "boolean",
+                                "description": "是否包含匹配文件的内容片段（默认：true）",
+                            },
+                            "max_results": {
+                                "type": "number",
+                                "description": "最大返回结果数量（默认：10）",
+                            },
+                        },
+                        "required": ["url", "project_path"],
+                    },
+                ),
+                Tool(
+                    name="list_directory",
+                    description=(
+                        "列出项目目录结构。"
+                        "返回指定路径下的文件和子目录树形结构。"
+                    ),
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "project_path": {
+                                "type": "string",
+                                "description": "项目根目录绝对路径",
+                            },
+                            "relative_path": {
+                                "type": "string",
+                                "description": "要列出的目录相对路径（相对于 project_path，默认为根目录）",
+                            },
+                            "max_depth": {
+                                "type": "number",
+                                "description": "最大目录深度（默认：3）",
+                            },
+                            "ignore_dirs": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "可选的额外忽略目录列表",
+                            },
+                        },
+                        "required": ["project_path"],
                     },
                 ),
             ]
